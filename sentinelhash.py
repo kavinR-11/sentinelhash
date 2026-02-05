@@ -20,7 +20,12 @@ def generate_baseline(directory):
     for root, _, files in os.walk(directory):
         for file in files:
             full_path = os.path.join(root, file)
-            hashes[full_path] = hash_file(full_path)
+            file_hash = hash_file(full_path)
+if file_hash:
+    hashes[full_path] = file_hash
+else:
+    print(f"[!] Skipped unreadable file: {full_path}")
+
     return hashes
 
 def save_baseline(hashes):
