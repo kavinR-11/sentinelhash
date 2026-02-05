@@ -6,9 +6,13 @@ from datetime import datetime
 
 def hash_file(path):
     sha256 = hashlib.sha256()
+try:
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             sha256.update(chunk)
+except (OSError, PermissionError):
+    return None
+
     return sha256.hexdigest()
 
 def generate_baseline(directory):
