@@ -5,7 +5,7 @@ import argparse
 from datetime import datetime
 
 
-# ---------------- CONFIG ---------------- #
+# ================= CONFIG ================= #
 
 IGNORE_EXTENSIONS = {
     ".log",
@@ -17,7 +17,7 @@ IGNORE_EXTENSIONS = {
 MALWARE_HASH_FILE = "malware_hashes.txt"
 
 
-# ---------------- HASHING ---------------- #
+# ================= HASHING ================= #
 
 def hash_file(path):
     sha256 = hashlib.sha256()
@@ -30,9 +30,9 @@ def hash_file(path):
         return None
 
 
-# ---------------- SCANNING ---------------- #
+# ================= SCANNING ================= #
 
-def generate_baseline(directory):
+def generate_snapshot(directory):
     hashes = {}
 
     for root, _, files in os.walk(directory):
@@ -52,7 +52,7 @@ def generate_baseline(directory):
     return hashes
 
 
-# ---------------- BASELINE ---------------- #
+# ================= BASELINE ================= #
 
 def save_baseline(hashes):
     data = {
@@ -75,7 +75,7 @@ def load_baseline():
     return data["files"]
 
 
-# ---------------- MALWARE HASHES ---------------- #
+# ================= MALWARE HASHES ================= #
 
 def load_malware_hashes():
     if not os.path.exists(MALWARE_HASH_FILE):
@@ -85,7 +85,7 @@ def load_malware_hashes():
         return {line.strip() for line in f if line.strip()}
 
 
-# ---------------- COMPARISON ---------------- #
+# ================= COMPARISON ================= #
 
 def compare_files(old, current):
     old_set = set(old.keys())
@@ -108,7 +108,29 @@ def compare_files(old, current):
     return modified, new_files, deleted
 
 
-# ---------------- MAIN ---------------- #
+# ================= REPORT ================= #
+
+def write_report(scan_path, modified, new_files, deleted, malware_hits):
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+
+    report = {
+        "scan_path": scan_path,
+        "timestamp": timestamp,
+        "modified_files": modified,
+        "new_files": new_files,
+        "deleted_files": deleted,
+        "malware_detected": malware_hits
+    }
+
+    filename = f"sentinelhash_report_{timestamp}.json"
+
+    with open(filename, "w") as f:
+        json.dump(report, f, indent=4)
+
+    print(f"[+] Incident response report written: {filename}")
+
+
+# ================= MAIN ================= #
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -136,9 +158,11 @@ if __name__ == "__main__":
         malware_hashes = load_malware_hashes()
 
         print("[*] Rescanning directory...")
-        current_files = generate_baseline(args.path)
+        current_files = generate_snapshot(args.path)
 
         modified, new_files, deleted = compare_files(old_files, current_files)
+
+        malware_hits = []
 
         print("\n=== Scan Results ===")
 
@@ -146,12 +170,14 @@ if __name__ == "__main__":
             tag = ""
             if current_files[f] in malware_hashes:
                 tag = " ⚠️ KNOWN MALWARE"
+                malware_hits.append(f)
             print(f"[MODIFIED] {f}{tag}")
 
         for f in new_files:
             tag = ""
             if current_files[f] in malware_hashes:
                 tag = " ⚠️ KNOWN MALWARE"
+                malware_hits.append(f)
             print(f"[NEW]      {f}{tag}")
 
         for f in deleted:
@@ -160,8 +186,16 @@ if __name__ == "__main__":
         if not (modified or new_files or deleted):
             print("[+] No changes detected. System integrity intact.")
 
+        write_report(
+            args.path,
+            modified,
+            new_files,
+            deleted,
+            malware_hits
+        )
+
     else:
-        print("[*] Scanning directory...")
-        hashes = generate_baseline(args.path)
+        print("[*] Creating baseline...")
+        hashes = generate_snapshot(args.path)
         save_baseline(hashes)
         print("[+] Baseline created: baseline.json")
