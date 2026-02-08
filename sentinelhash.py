@@ -2,14 +2,16 @@ import os
 import hashlib
 import json
 import argparse
+from datetime import datetime
+
+
+# Extensions to ignore (noise reduction)
 IGNORE_EXTENSIONS = {
     ".log",
     ".tmp",
     ".cache",
     ".part"
 }
-
-from datetime import datetime
 
 
 def hash_file(path):
@@ -28,6 +30,10 @@ def generate_baseline(directory):
 
     for root, _, files in os.walk(directory):
         for file in files:
+            _, ext = os.path.splitext(file)
+            if ext.lower() in IGNORE_EXTENSIONS:
+                continue
+
             full_path = os.path.join(root, file)
             file_hash = hash_file(full_path)
 
@@ -113,18 +119,8 @@ if __name__ == "__main__":
         for f in modified:
             print(f"[MODIFIED] {f}")
 
-        for file in files:
-    _, ext = os.path.splitext(file)
-    if ext.lower() in IGNORE_EXTENSIONS:
-        continue
-
-    full_path = os.path.join(root, file)
-    file_hash = hash_file(full_path)
-
-    if file_hash:
-        hashes[full_path] = file_hash
-    else:
-        print(f"[!] Skipped unreadable file: {full_path}")
+        for f in new_files:
+            print(f"[NEW]      {f}")
 
         for f in deleted:
             print(f"[DELETED]  {f}")
@@ -137,5 +133,6 @@ if __name__ == "__main__":
         hashes = generate_baseline(args.path)
         save_baseline(hashes)
         print("[+] Baseline created: baseline.json")
+
 
 
