@@ -2,6 +2,13 @@ import os
 import hashlib
 import json
 import argparse
+IGNORE_EXTENSIONS = {
+    ".log",
+    ".tmp",
+    ".cache",
+    ".part"
+}
+
 from datetime import datetime
 
 
@@ -106,8 +113,18 @@ if __name__ == "__main__":
         for f in modified:
             print(f"[MODIFIED] {f}")
 
-        for f in new_files:
-            print(f"[NEW]      {f}")
+        for file in files:
+    _, ext = os.path.splitext(file)
+    if ext.lower() in IGNORE_EXTENSIONS:
+        continue
+
+    full_path = os.path.join(root, file)
+    file_hash = hash_file(full_path)
+
+    if file_hash:
+        hashes[full_path] = file_hash
+    else:
+        print(f"[!] Skipped unreadable file: {full_path}")
 
         for f in deleted:
             print(f"[DELETED]  {f}")
