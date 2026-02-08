@@ -41,19 +41,95 @@ def save_baseline(hashes):
     with open("baseline.json", "w") as f:
         json.dump(data, f, indent=4)
 
+def hash_file(path):
+    ...
+
+def generate_baseline(directory):
+    ...
+
+def save_baseline(hashes):
+    ...
+
+# 👉 ADD THESE TWO FUNCTIONS HERE 👇
+
+def load_baseline():
+    if not os.path.exists("baseline.json"):
+        print("[!] baseline.json not found. Create a baseline first.")
+        exit(1)
+
+    with open("baseline.json", "r") as f:
+        data = json.load(f)
+
+    return data["files"]
+
+
+def compare_files(old, current):
+    old_set = set(old.keys())
+    current_set = set(current.keys())
+
+    modified = []
+    new_files = []
+    deleted = []
+
+    for path in old_set & current_set:
+        if old[path] != current[path]:
+            modified.append(path)
+
+    for path in current_set - old_set:
+        new_files.append(path)
+
+    for path in old_set - current_set:
+        deleted.append(path)
+
+    return modified, new_files, deleted
+
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="SentinelHash - File Integrity Checker"
-    )
-    parser.add_argument(
-        "path",
-        help="Directory path to scan"
-    )
+   parser = argparse.ArgumentParser(
+    description="SentinelHash - File Integrity Checker"
+)
+
+parser.add_argument(
+    "path",
+    help="Directory path to scan"
+)
+
+parser.add_argument(
+    "--check",
+    action="store_true",
+    help="Check current state against baseline"
+)
+
 
     args = parser.parse_args()
 
+if args.check:
+    print("[*] Loading baseline...")
+    old_files = load_baseline()
+
+    print("[*] Rescanning directory...")
+    current_files = generate_baseline(args.path)
+
+    modified, new_files, deleted = compare_files(old_files, current_files)
+
+    print("\n=== Scan Results ===")
+
+    for f in modified:
+        print(f"[MODIFIED] {f}")
+
+    for f in new_files:
+        print(f"[NEW]      {f}")
+
+    for f in deleted:
+        print(f"[DELETED]  {f}")
+
+    if not (modified or new_files or deleted):
+        print("[+] No changes detected. System integrity intact.")
+
+else:
     print("[*] Scanning directory...")
     hashes = generate_baseline(args.path)
     save_baseline(hashes)
     print("[+] Baseline created: baseline.json")
+
