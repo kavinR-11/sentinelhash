@@ -5,7 +5,8 @@ import argparse
 from datetime import datetime
 
 
-# Extensions to ignore (noise reduction)
+# ---------------- CONFIG ---------------- #
+
 IGNORE_EXTENSIONS = {
     ".log",
     ".tmp",
@@ -13,6 +14,10 @@ IGNORE_EXTENSIONS = {
     ".part"
 }
 
+MALWARE_HASH_FILE = "malware_hashes.txt"
+
+
+# ---------------- HASHING ---------------- #
 
 def hash_file(path):
     sha256 = hashlib.sha256()
@@ -24,6 +29,8 @@ def hash_file(path):
     except (OSError, PermissionError):
         return None
 
+
+# ---------------- SCANNING ---------------- #
 
 def generate_baseline(directory):
     hashes = {}
@@ -44,6 +51,8 @@ def generate_baseline(directory):
 
     return hashes
 
+
+# ---------------- BASELINE ---------------- #
 
 def save_baseline(hashes):
     data = {
@@ -66,6 +75,18 @@ def load_baseline():
     return data["files"]
 
 
+# ---------------- MALWARE HASHES ---------------- #
+
+def load_malware_hashes():
+    if not os.path.exists(MALWARE_HASH_FILE):
+        return set()
+
+    with open(MALWARE_HASH_FILE, "r") as f:
+        return {line.strip() for line in f if line.strip()}
+
+
+# ---------------- COMPARISON ---------------- #
+
 def compare_files(old, current):
     old_set = set(old.keys())
     current_set = set(current.keys())
@@ -87,9 +108,11 @@ def compare_files(old, current):
     return modified, new_files, deleted
 
 
+# ---------------- MAIN ---------------- #
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="SentinelHash - File Integrity Checker"
+        description="SentinelHash - File Integrity & Malware Hash Monitor"
     )
 
     parser.add_argument(
@@ -109,6 +132,9 @@ if __name__ == "__main__":
         print("[*] Loading baseline...")
         old_files = load_baseline()
 
+        print("[*] Loading malware hash database...")
+        malware_hashes = load_malware_hashes()
+
         print("[*] Rescanning directory...")
         current_files = generate_baseline(args.path)
 
@@ -117,10 +143,16 @@ if __name__ == "__main__":
         print("\n=== Scan Results ===")
 
         for f in modified:
-            print(f"[MODIFIED] {f}")
+            tag = ""
+            if current_files[f] in malware_hashes:
+                tag = " ⚠️ KNOWN MALWARE"
+            print(f"[MODIFIED] {f}{tag}")
 
         for f in new_files:
-            print(f"[NEW]      {f}")
+            tag = ""
+            if current_files[f] in malware_hashes:
+                tag = " ⚠️ KNOWN MALWARE"
+            print(f"[NEW]      {f}{tag}")
 
         for f in deleted:
             print(f"[DELETED]  {f}")
@@ -133,6 +165,3 @@ if __name__ == "__main__":
         hashes = generate_baseline(args.path)
         save_baseline(hashes)
         print("[+] Baseline created: baseline.json")
-
-
-
