@@ -1,1 +1,1 @@
-
+SentinelHash is a Python-based file integrity monitoring tool that detects unauthorized file changes using SHA-256 hashing, correlates hashes against known malware signatures, and generates incident-response-ready forensic reports.
